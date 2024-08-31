@@ -6,29 +6,50 @@ import logging
 import hashlib
 import asyncio
 from typing import Optional
+from gpiozero import Button
 from datetime import datetime
 from PIL import Image,ImageDraw,ImageFont
 
+logger = logging.getLogger(__name__)
 libdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
 picdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'pic')
+
+# Global variables which stores the information from the inverter
+current_power_production = 0
+battery_level = 0
+grid_power = 0
+battery_power = 0
+current_load = 0
+power_generation = 0
+output_to_grid = 0
+input_from_grid = 0
+current_datetime = datetime.now()
 
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
 from waveshare_epd import epd2in7_V2
 
-logger = logging.getLogger(__name__)
+# Initialize the e-Paper screen
+current_screen = 1
+epd = epd2in7_V2.EPD()
+epd.init()
+epd.Clear()
+epd.init_Fast()
+font18 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 18)
+font36 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 36)
+font48 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 48)
 
 class AlphaESSAPI:
     def __init__(self) -> None:
-        # Step 1: Open the text file in read mode
+        # Open the configuration file
         with open('configuration.conf', 'r') as file:
-            # Step 2: Read the first three lines
+            # Read the configuration options
             self.BASEURL = file.readline().strip()
             self.APPID = file.readline().strip()
             self.APPSECRET = file.readline().strip()
             self.SERIALNUMBER = file.readline().strip()
-            self.sys_sn_list = None   # a list of SNs registered to the APPID, initialized with get_ess_list
+            self.sys_sn_list = None
 
     # private funciton, generate signature based on timestamp
     def __get_signature(self, timestamp) -> str:
@@ -143,14 +164,18 @@ class AlphaESSAPI:
 # Our main function, that polls regularily Alpha-ESS for the current power data.
 # It outputs everything to the e-Paper display.
 async def poll_alphaess() -> None:
-    alpha = AlphaESSAPI()
+    global current_power_production
+    global battery_level
+    global grid_power
+    global battery_power
+    global current_load
+    global power_generation
+    global output_to_grid
+    global input_from_grid
+    global current_datetime
 
-    # Initialize the e-Paper screen
-    epd = epd2in7_V2.EPD()
-    epd.init()
-    epd.Clear()
-    epd.init_Fast()
-    font18 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 18)
+    # Initialize the AlphaESS API interface
+    alpha = AlphaESSAPI()
 
     while 1 == 1:
         # Retrieve the current power data
@@ -166,35 +191,50 @@ async def poll_alphaess() -> None:
         input_from_grid = energy_stats.get('eInput')
         current_datetime = datetime.now()
 
-        # Print out the current date and time
-        print(f"Current date and time: {current_datetime}")
-        print("=================================================")
+        # Print out everything to the console
+        print_to_console()
 
-        # Print out the current power data
-        print(f"Current power production: {current_power_production}")
-        print(f"Current battery level: {battery_level}%")
-        print(f"Current load: {current_load}")
+        # Print out everything to the e-Paper display
+        print_to_epaper()
 
-        # Print out the battery information
-        if battery_power < 0:
-            print(f"Power to battery: {battery_power * -1}")
-        else:
-            print(f"Power from battery: {battery_power}")
+        # Wait for 10 seconds, until the next inverter update
+        time.sleep(10)
 
-        # Print out the grid power information
-        if grid_power < 0:
-            print(f"Power to grid: {grid_power * -1}")
-        else:
-            print(f"Power from grid: {grid_power}")
+# Prints out the data from the inverter to the console
+def print_to_console():
+    # Print out the current date and time
+    print(f"Current date and time: {current_datetime}")
+    print("=================================================")
 
-        # Print out today's energy statistics
-        print(f"Today's power generation: {power_generation} kWh")
-        print(f"Today's output to the grid: {output_to_grid} kWh")
-        print(f"Today's input from the grid: {input_from_grid} kWh")
-        print("")
+    # Print out the current power data
+    print(f"Current power production: {current_power_production}")
+    print(f"Current battery level: {battery_level}%")
+    print(f"Current load: {current_load}")
 
-        Himage = Image.new('1', (epd.height, epd.width), 255)  # 255: clear the frame
-        draw = ImageDraw.Draw(Himage)
+    # Print out the battery information
+    if battery_power < 0:
+        print(f"Power to battery: {battery_power * -1}")
+    else:
+        print(f"Power from battery: {battery_power}")
+
+    # Print out the grid power information
+    if grid_power < 0:
+        print(f"Power to grid: {grid_power * -1}")
+    else:
+        print(f"Power from grid: {grid_power}")
+
+    # Print out today's energy statistics
+    print(f"Today's power generation: {power_generation} kWh")
+    print(f"Today's output to the grid: {output_to_grid} kWh")
+    print(f"Today's input from the grid: {input_from_grid} kWh")
+    print("")
+
+# Prints out the data from the inverter to the e-Paper screen
+def print_to_epaper():
+    Himage = Image.new('1', (epd.height, epd.width), 255)
+    draw = ImageDraw.Draw(Himage)
+
+    if current_screen == 1:
         draw.text((10, 0), "Production: " + str(current_power_production) + " w", font = font18, fill = 0)
         draw.text((10, 20), "Battery: " + str(battery_level) + "%", font = font18, fill = 0)
         draw.text((10, 40), "Load: " + str(current_load) + " w", font = font18, fill = 0)
@@ -212,10 +252,31 @@ async def poll_alphaess() -> None:
         draw.text((10, 110), "Power Generation: " + str(power_generation) + " kWh", font = font18, fill = 0)
         draw.text((10, 130), "Output to Grid: " + str(output_to_grid) + " kWh", font = font18, fill = 0)
         draw.text((10, 150), "Input from Grid: " + str(input_from_grid) + " kWh", font = font18, fill = 0)
-        epd.display_Base(epd.getbuffer(Himage))
+    if current_screen == 2:
+        draw.text((10, 0), "P: " + str(current_power_production) + " w", font = font48, fill = 0)
+        draw.text((10, 50), "L: " + str(current_load) + " w", font = font48, fill = 0)
+        draw.text((10, 100), "B: " + str(battery_level) + "%", font = font48, fill = 0)
 
-        # Wait for 10 seconds, until the next status update
-        time.sleep(10)
+    # Write everything to the screen
+    epd.display_Base(epd.getbuffer(Himage))
+
+# This button press switches to the 1st data screen
+def first_button_handler():
+    global current_screen
+    current_screen = 1
+    print_to_epaper()
+
+# This button press switches to the 2nd data screen
+def second_button_handler():
+    global current_screen
+    current_screen = 2
+    print_to_epaper()
+
+# The button handlers for the various data screens
+first_button = Button(5)
+second_button = Button(6)
+first_button.when_pressed = first_button_handler
+second_button.when_pressed = second_button_handler
 
 if __name__ == "__main__":
     asyncio.run(poll_alphaess())
