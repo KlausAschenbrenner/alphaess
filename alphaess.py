@@ -9,16 +9,13 @@ from typing import Optional
 from datetime import datetime
 from PIL import Image,ImageDraw,ImageFont
 
-# libdir = '/home/klaus/Documents/GitHub/alphaess-developer/alphacloud_open_api/lib'
-# picdir = '/home/klaus/Documents/GitHub/alphaess-developer/alphacloud_open_api/pic'
-
 libdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'lib')
 picdir = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'pic')
 
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
-# from waveshare_epd import epd2in7_V2
+from waveshare_epd import epd2in7_V2
 
 logger = logging.getLogger(__name__)
 
@@ -148,17 +145,12 @@ class AlphaESSAPI:
 async def poll_alphaess() -> None:
     alpha = AlphaESSAPI()
 
-    # epd = epd2in7_V2.EPD()
-    # epd.init()
-    # epd.Clear()
-    # epd.init_Fast()
-    # font18 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 18)
-
-    # Limage = Image.new('1', (epd.width, epd.height), 255)  # 255: clear the frame
-    # draw = ImageDraw.Draw(Limage)
-    # draw.text((2, 0), 'hello world', font = font24, fill = 0)
-    # epd.display_Fast(epd.getbuffer(Limage))
-    # time.sleep(2)
+    # Initialize the e-Paper screen
+    epd = epd2in7_V2.EPD()
+    epd.init()
+    epd.Clear()
+    epd.init_Fast()
+    font18 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 18)
 
     while 1 == 1:
         # Retrieve the current power data
@@ -201,26 +193,26 @@ async def poll_alphaess() -> None:
         print(f"Today's input from the grid: {input_from_grid} kWh")
         print("")
 
-        # Himage = Image.new('1', (epd.height, epd.width), 255)  # 255: clear the frame
-        # draw = ImageDraw.Draw(Himage)
-        # draw.text((10, 0), "Production: " + str(current_power_production) + " w", font = font18, fill = 0)
-        # draw.text((10, 20), "Battery: " + str(battery_level) + "%", font = font18, fill = 0)
-        # draw.text((10, 40), "Load: " + str(current_load) + " w", font = font18, fill = 0)
+        Himage = Image.new('1', (epd.height, epd.width), 255)  # 255: clear the frame
+        draw = ImageDraw.Draw(Himage)
+        draw.text((10, 0), "Production: " + str(current_power_production) + " w", font = font18, fill = 0)
+        draw.text((10, 20), "Battery: " + str(battery_level) + "%", font = font18, fill = 0)
+        draw.text((10, 40), "Load: " + str(current_load) + " w", font = font18, fill = 0)
 
-        # if battery_power < 0:
-        #    draw.text((10, 60), "Power to Battery: " + str(battery_power * -1) + " w", font = font18, fill = 0)
-        # else:
-        #    draw.text((10, 60), "Power from Battery: " + str(battery_power) + " w", font = font18, fill = 0)
+        if battery_power < 0:
+            draw.text((10, 60), "Power to Battery: " + str(battery_power * -1) + " w", font = font18, fill = 0)
+        else:
+            draw.text((10, 60), "Power from Battery: " + str(battery_power) + " w", font = font18, fill = 0)
         
-        # if grid_power < 0:
-        #     draw.text((10, 80), "Power to Grid: " + str(grid_power * -1) + " w", font = font18, fill = 0)
-        # else:
-        #     draw.text((10, 80), "Power from Grid: " + str(grid_power) + " w", font = font18, fill = 0)
+        if grid_power < 0:
+            draw.text((10, 80), "Power to Grid: " + str(grid_power * -1) + " w", font = font18, fill = 0)
+        else:
+            draw.text((10, 80), "Power from Grid: " + str(grid_power) + " w", font = font18, fill = 0)
 
-        # draw.text((10, 110), "Power Generation: " + str(power_generation) + " kWh", font = font18, fill = 0)
-        # draw.text((10, 130), "Output to Grid: " + str(output_to_grid) + " kWh", font = font18, fill = 0)
-        # draw.text((10, 150), "Input from Grid: " + str(input_from_grid) + " kWh", font = font18, fill = 0)
-        # epd.display_Base(epd.getbuffer(Himage))
+        draw.text((10, 110), "Power Generation: " + str(power_generation) + " kWh", font = font18, fill = 0)
+        draw.text((10, 130), "Output to Grid: " + str(output_to_grid) + " kWh", font = font18, fill = 0)
+        draw.text((10, 150), "Input from Grid: " + str(input_from_grid) + " kWh", font = font18, fill = 0)
+        epd.display_Base(epd.getbuffer(Himage))
 
         # Wait for 10 seconds, until the next status update
         time.sleep(10)
