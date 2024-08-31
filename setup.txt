@@ -15,4 +15,5 @@ Create a file named "configuration.conf" in the same folder as the "alphaess.py"
 4th line: Serial number of the Inverter, starting with "AL"
 
 # 3. Run everything
+Make the "startup.sh" file runnable: "chmod +x startup.sh"
 Run the file "startup.sh" from the console
