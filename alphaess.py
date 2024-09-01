@@ -178,18 +178,22 @@ async def poll_alphaess() -> None:
     alpha = AlphaESSAPI()
 
     while 1 == 1:
-        # Retrieve the current power data
-        current_power_data = await alpha.get_last_power_data()
-        energy_stats = await alpha.get_one_date_energy(datetime.now().strftime("%Y-%m-%d"))
-        current_power_production = current_power_data.get('ppv')
-        battery_level = current_power_data.get('soc')
-        grid_power = current_power_data.get('pgrid')
-        battery_power = current_power_data.get('pbat')
-        current_load = current_power_data.get('pload')
-        power_generation = energy_stats.get('epv')
-        output_to_grid = energy_stats.get('eOutput')
-        input_from_grid = energy_stats.get('eInput')
-        current_datetime = datetime.now()
+        try:
+            # Retrieve the current power data
+            current_power_data = await alpha.get_last_power_data()
+            energy_stats = await alpha.get_one_date_energy(datetime.now().strftime("%Y-%m-%d"))
+            current_power_production = current_power_data.get('ppv')
+            battery_level = current_power_data.get('soc')
+            grid_power = current_power_data.get('pgrid')
+            battery_power = current_power_data.get('pbat')
+            current_load = current_power_data.get('pload')
+            power_generation = energy_stats.get('epv')
+            output_to_grid = energy_stats.get('eOutput')
+            input_from_grid = energy_stats.get('eInput')
+            current_datetime = datetime.now()
+
+        except:
+            print("An error occurred.")
 
         # Print out everything to the console
         print_to_console()
