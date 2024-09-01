@@ -36,6 +36,7 @@ epd = epd2in7_V2.EPD()
 epd.init()
 epd.Clear()
 epd.init_Fast()
+font12 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 12)
 font18 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 18)
 font36 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 36)
 font48 = ImageFont.truetype(os.path.join(picdir, 'Font.ttc'), 48)
@@ -201,8 +202,8 @@ async def poll_alphaess() -> None:
         # Print out everything to the e-Paper display
         print_to_epaper()
 
-        # Wait for 10 seconds, until the next inverter update
-        time.sleep(10)
+        # Wait for 30 seconds, until the next inverter update
+        time.sleep(30)
 
 # Prints out the data from the inverter to the console
 def print_to_console():
@@ -239,6 +240,11 @@ def print_to_epaper():
     draw = ImageDraw.Draw(Himage)
 
     if current_screen == 1:
+        draw.text((10, 0), "P: " + str(current_power_production) + " w", font = font48, fill = 0)
+        draw.text((10, 50), "L: " + str(current_load) + " w", font = font48, fill = 0)
+        draw.text((10, 100), "B: " + str(battery_level) + "%", font = font48, fill = 0)
+        draw.text((15, 160), "Last Update: " + str(datetime.now()), font = font12, fill = 0)
+    if current_screen == 2:
         draw.text((10, 0), "Production: " + str(current_power_production) + " w", font = font18, fill = 0)
         draw.text((10, 20), "Battery: " + str(battery_level) + "%", font = font18, fill = 0)
         draw.text((10, 40), "Load: " + str(current_load) + " w", font = font18, fill = 0)
@@ -256,10 +262,6 @@ def print_to_epaper():
         draw.text((10, 110), "Power Generation: " + str(power_generation) + " kWh", font = font18, fill = 0)
         draw.text((10, 130), "Output to Grid: " + str(output_to_grid) + " kWh", font = font18, fill = 0)
         draw.text((10, 150), "Input from Grid: " + str(input_from_grid) + " kWh", font = font18, fill = 0)
-    if current_screen == 2:
-        draw.text((10, 0), "P: " + str(current_power_production) + " w", font = font48, fill = 0)
-        draw.text((10, 50), "L: " + str(current_load) + " w", font = font48, fill = 0)
-        draw.text((10, 100), "B: " + str(battery_level) + "%", font = font48, fill = 0)
 
     # Write everything to the screen
     epd.display_Base(epd.getbuffer(Himage))
